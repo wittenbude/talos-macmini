@@ -1,0 +1,61 @@
+name: Build Talos
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GHCR_OWNER: ${{ github.repository_owner }}
+      GHCR_REG: ghcr.io
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Docker Buildx (with insecure entitlement)
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        #with:
+        #  buildkitd-flags: --allow-insecure-entitlement security.insecure
+
+      - name: Login to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply Kernel Patch
+        working-directory: ./pkgs
+        run: >
+          sed -i '/^\s*LLVM: 1/d' kernel/build/pkg.yaml
+
+      - name: Build and push kernel (pkgs submodule)
+        env:
+          REGISTRY: ghcr.io
+          USERNAME: ${{ github.repository_owner }}
+          PUSH: "true"
+          PLATFORM: linux/amd64
+        working-directory: ./pkgs
+        run: make kernel
+
+      - name: Build Talos
+        working-directory: ./talos
+        env:
+          REGISTRY: ghcr.io
+          USERNAME: ${{ github.repository_owner }}
+          PUSH: "true"
+          TAG: ${{ github.event.inputs.talos_version }}
+          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.kernel_tag.outputs.KERNEL_TAG }}
+          INSTALLER_ARCH: amd64
+          PLATFORM: linux/amd64
+        run: make kernel initramfs imager installer-base
