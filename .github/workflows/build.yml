@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     tags: ['*']
+  release:
+    types: [created]
   workflow_dispatch:
     inputs:
       tag:
@@ -15,14 +17,15 @@ jobs:
     name: Build Talos
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # actions: write
+      contents: write
       packages: write
 
     steps:
       - name: Setup
         id: setup
         env:
-          TAG: ${{ inputs.tag || github.ref_name }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
         run: echo "tag=v${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Code
@@ -31,7 +34,7 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup Docker Buildx (with insecure entitlement)
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         #with:
         #  buildkitd-flags: --allow-insecure-entitlement security.insecure
@@ -48,24 +51,96 @@ jobs:
         run: >
           sed -i '/^\s*LLVM: 1/d' kernel/build/pkg.yaml
 
-      - name: Build and push kernel (pkgs submodule)
+      - name: Build and push kernel
+        working-directory: ./pkgs
         env:
-          REGISTRY: ghcr.io
-          USERNAME: ${{ github.repository_owner }}
+          USERNAME: ${{ github.repository_owner }}/talos
           PUSH: "true"
           TAG: ${{ steps.setup.outputs.tag }}
           PLATFORM: linux/amd64
-        working-directory: ./pkgs
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=pkgs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-to=type=gha,mode=max,scope=pkgs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
         run: make kernel
 
-      - name: Build Talos
+      # Each target below is a separate `docker buildx build`, so it gets its
+      # own cache scope (see the "Build and push kernel" step for details).
+      - name: Build Talos kernel
         working-directory: ./talos
         env:
-          REGISTRY: ghcr.io
+          USERNAME: ${{ github.repository_owner }}/talos
+          PUSH: "true"
+          TAG: ${{ steps.setup.outputs.tag }}
+          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
+          INSTALLER_ARCH: amd64
+          PLATFORM: linux/amd64
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-kernel,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-to=type=gha,mode=max,scope=talos-kernel,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+        run: make kernel
+
+      - name: Build Talos initramfs
+        working-directory: ./talos
+        env:
+          USERNAME: ${{ github.repository_owner }}/talos
+          PUSH: "true"
+          TAG: ${{ steps.setup.outputs.tag }}
+          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
+          INSTALLER_ARCH: amd64
+          PLATFORM: linux/amd64
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-initramfs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-to=type=gha,mode=max,scope=talos-initramfs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+        run: make initramfs
+
+      - name: Build Talos imager
+        working-directory: ./talos
+        env:
+          USERNAME: ${{ github.repository_owner }}/talos
+          PUSH: "true"
+          TAG: ${{ steps.setup.outputs.tag }}
+          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
+          INSTALLER_ARCH: amd64
+          PLATFORM: linux/amd64
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-imager,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-to=type=gha,mode=max,scope=talos-imager,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+        run: make imager
+
+      - name: Build Talos installer-base
+        working-directory: ./talos
+        env:
+          USERNAME: ${{ github.repository_owner }}/talos
+          PUSH: "true"
+          TAG: ${{ steps.setup.outputs.tag }}
+          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
+          INSTALLER_ARCH: amd64
+          PLATFORM: linux/amd64
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-installer-base,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-to=type=gha,mode=max,scope=talos-installer-base,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+        run: make installer-base
+
+      - name: Generate Images
+        working-directory: ./talos
+        env:
           USERNAME: ${{ github.repository_owner }}
           PUSH: "true"
           TAG: ${{ steps.setup.outputs.tag }}
           PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
           INSTALLER_ARCH: amd64
           PLATFORM: linux/amd64
-        run: make kernel initramfs imager installer-base
+          IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0
+        run: make installer iso image-metal
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: talos-${{ steps.setup.outputs.tag }}
+          path: ./talos/_out/*
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          files: ./talos/_out/*

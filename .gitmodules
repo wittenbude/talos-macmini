@@ -1,6 +1,10 @@
 [submodule "pkgs"]
 	path = pkgs
 	url = https://github.com/siderolabs/pkgs.git
+	# Tracks the release branch matching the Talos major version; updated by Renovate
+	branch = release-1.13
 [submodule "talos"]
 	path = talos
 	url = https://github.com/siderolabs/talos.git
+	# Holds the tracked Talos release tag (e.g. v1.13.8); updated by Renovate
+	branch = v1.13.8

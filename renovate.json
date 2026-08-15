@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "git-submodules": {
+    "enabled": true
+  },
+  "groupSingleUpdates": true,
+  "packageRules": [
+    {
+      "matchDepNames": ["pkgs"],
+      "versioning": "regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)$"
+    },
+    {
+      "matchDepNames": ["talos", "pkgs"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "groupName": "Talos & Packages",
+      "groupSlug": "talos-pkgs-release"
+    }
+  ]
+}
