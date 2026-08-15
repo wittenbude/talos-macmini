@@ -20,12 +20,20 @@ jobs:
       contents: write
       packages: write
 
+    env:
+      USERNAME: ${{ github.repository_owner }}/talos
+      PLATFORM: linux/amd64
+      INSTALLER_ARCH: amd64
+      PUSH: "true"
+
     steps:
       - name: Setup
         id: setup
         env:
           TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
-        run: echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "TAG=${TAG}" >> "$GITHUB_ENV"
+          echo "PKG_KERNEL=ghcr.io/$GITHUB_REPOSITORY_OWNER/kernel:${TAG}" >> "$GITHUB_ENV"
 
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,10 +61,6 @@ jobs:
       - name: Build Kernel
         working-directory: ./pkgs
         env:
-          USERNAME: ${{ github.repository_owner }}/talos
-          PUSH: "true"
-          TAG: ${{ steps.setup.outputs.tag }}
-          PLATFORM: linux/amd64
           CI_ARGS: >-
             --cache-from=type=gha,scope=pkgs
             --cache-to=type=gha,mode=max,scope=pkgs
@@ -66,12 +70,6 @@ jobs:
       - name: Build Talos Kernel
         working-directory: ./talos
         env:
-          USERNAME: ${{ github.repository_owner }}/talos
-          PUSH: "true"
-          TAG: ${{ steps.setup.outputs.tag }}
-          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
-          INSTALLER_ARCH: amd64
-          PLATFORM: linux/amd64
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-kernel
             --cache-to=type=gha,mode=max,scope=talos-kernel
@@ -80,12 +78,6 @@ jobs:
       - name: Build Talos initramfs
         working-directory: ./talos
         env:
-          USERNAME: ${{ github.repository_owner }}/talos
-          PUSH: "true"
-          TAG: ${{ steps.setup.outputs.tag }}
-          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
-          INSTALLER_ARCH: amd64
-          PLATFORM: linux/amd64
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-initramfs
             --cache-to=type=gha,mode=max,scope=talos-initramfs
@@ -94,12 +86,6 @@ jobs:
       - name: Build Talos imager
         working-directory: ./talos
         env:
-          USERNAME: ${{ github.repository_owner }}/talos
-          PUSH: "true"
-          TAG: ${{ steps.setup.outputs.tag }}
-          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
-          INSTALLER_ARCH: amd64
-          PLATFORM: linux/amd64
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-imager
             --cache-to=type=gha,mode=max,scope=talos-imager
@@ -108,12 +94,6 @@ jobs:
       - name: Build Talos installer-base
         working-directory: ./talos
         env:
-          USERNAME: ${{ github.repository_owner }}/talos
-          PUSH: "true"
-          TAG: ${{ steps.setup.outputs.tag }}
-          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
-          INSTALLER_ARCH: amd64
-          PLATFORM: linux/amd64
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-installer-base
             --cache-to=type=gha,mode=max,scope=talos-installer-base
@@ -122,12 +102,6 @@ jobs:
       - name: Generate Images
         working-directory: ./talos
         env:
-          USERNAME: ${{ github.repository_owner }}
-          PUSH: "true"
-          TAG: ${{ steps.setup.outputs.tag }}
-          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
-          INSTALLER_ARCH: amd64
-          PLATFORM: linux/amd64
           IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0
         run: make installer iso image-metal
 
