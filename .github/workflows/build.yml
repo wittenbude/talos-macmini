@@ -17,7 +17,6 @@ jobs:
     name: Build Talos
     runs-on: ubuntu-latest
     permissions:
-      # actions: write
       contents: write
       packages: write
 
@@ -26,7 +25,7 @@ jobs:
         id: setup
         env:
           TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
-        run: echo "tag=v${TAG#v}" >> "$GITHUB_OUTPUT"
+        run: echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,7 +50,7 @@ jobs:
         run: >
           sed -i '/^\s*LLVM: 1/d' kernel/build/pkg.yaml
 
-      - name: Build and push kernel
+      - name: Build Kernel
         working-directory: ./pkgs
         env:
           USERNAME: ${{ github.repository_owner }}/talos
@@ -59,13 +58,12 @@ jobs:
           TAG: ${{ steps.setup.outputs.tag }}
           PLATFORM: linux/amd64
           CI_ARGS: >-
-            --cache-from=type=gha,scope=pkgs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
-            --cache-to=type=gha,mode=max,scope=pkgs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-from=type=gha,scope=pkgs
+            --cache-to=type=gha,mode=max,scope=pkgs
         run: make kernel
 
-      # Each target below is a separate `docker buildx build`, so it gets its
-      # own cache scope (see the "Build and push kernel" step for details).
-      - name: Build Talos kernel
+      # Each target below is a separate `docker buildx build`, so it gets its own cache scope.
+      - name: Build Talos Kernel
         working-directory: ./talos
         env:
           USERNAME: ${{ github.repository_owner }}/talos
@@ -75,8 +73,8 @@ jobs:
           INSTALLER_ARCH: amd64
           PLATFORM: linux/amd64
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-kernel,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
-            --cache-to=type=gha,mode=max,scope=talos-kernel,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-from=type=gha,scope=talos-kernel
+            --cache-to=type=gha,mode=max,scope=talos-kernel
         run: make kernel
 
       - name: Build Talos initramfs
@@ -89,8 +87,8 @@ jobs:
           INSTALLER_ARCH: amd64
           PLATFORM: linux/amd64
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-initramfs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
-            --cache-to=type=gha,mode=max,scope=talos-initramfs,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-from=type=gha,scope=talos-initramfs
+            --cache-to=type=gha,mode=max,scope=talos-initramfs
         run: make initramfs
 
       - name: Build Talos imager
@@ -103,8 +101,8 @@ jobs:
           INSTALLER_ARCH: amd64
           PLATFORM: linux/amd64
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-imager,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
-            --cache-to=type=gha,mode=max,scope=talos-imager,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-from=type=gha,scope=talos-imager
+            --cache-to=type=gha,mode=max,scope=talos-imager
         run: make imager
 
       - name: Build Talos installer-base
@@ -117,8 +115,8 @@ jobs:
           INSTALLER_ARCH: amd64
           PLATFORM: linux/amd64
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-installer-base,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
-            --cache-to=type=gha,mode=max,scope=talos-installer-base,ghtoken=$$GITHUB_TOKEN,repository=${{ github.repository }}
+            --cache-from=type=gha,scope=talos-installer-base
+            --cache-to=type=gha,mode=max,scope=talos-installer-base
         run: make installer-base
 
       - name: Generate Images
