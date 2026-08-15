@@ -3,19 +3,28 @@ name: Build Talos
 on:
   push:
     branches: [main]
+    tags: ['*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for the built version'
+        required: true
 
 jobs:
   build:
+    name: Build Talos
     runs-on: ubuntu-latest
-    env:
-      GHCR_OWNER: ${{ github.repository_owner }}
-      GHCR_REG: ghcr.io
     permissions:
       contents: read
       packages: write
 
     steps:
+      - name: Setup
+        id: setup
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: echo "tag=v${TAG#v}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,6 +53,7 @@ jobs:
           REGISTRY: ghcr.io
           USERNAME: ${{ github.repository_owner }}
           PUSH: "true"
+          TAG: ${{ steps.setup.outputs.tag }}
           PLATFORM: linux/amd64
         working-directory: ./pkgs
         run: make kernel
@@ -54,8 +64,8 @@ jobs:
           REGISTRY: ghcr.io
           USERNAME: ${{ github.repository_owner }}
           PUSH: "true"
-          TAG: ${{ github.event.inputs.talos_version }}
-          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.kernel_tag.outputs.KERNEL_TAG }}
+          TAG: ${{ steps.setup.outputs.tag }}
+          PKG_KERNEL: ghcr.io/${{ github.repository_owner }}/kernel:${{ steps.setup.outputs.tag }}
           INSTALLER_ARCH: amd64
           PLATFORM: linux/amd64
         run: make kernel initramfs imager installer-base
