@@ -35,6 +35,9 @@ jobs:
           echo "TAG=${TAG}" >> "$GITHUB_ENV"
           echo "PKG_KERNEL=ghcr.io/$GITHUB_REPOSITORY_OWNER/talos/kernel:${TAG}" >> "$GITHUB_ENV"
 
+      - name: Setup GitHub Cace
+        uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -68,38 +71,37 @@ jobs:
         run: make kernel
 
       # Each target below is a separate `docker buildx build`, so it gets its own cache scope.
-      - parallel:
-        - name: Build Talos Kernel
-          working-directory: ./talos
-          env:
-            CI_ARGS: >-
-              --cache-from=type=gha,scope=talos-kernel
-              --cache-to=type=gha,mode=max,scope=talos-kernel
-          run: make kernel
+      - name: Build Talos Kernel
+        working-directory: ./talos
+        env:
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-kernel
+            --cache-to=type=gha,mode=max,scope=talos-kernel
+        run: make kernel
 
-        - name: Build Talos initramfs
-          working-directory: ./talos
-          env:
-            CI_ARGS: >-
-              --cache-from=type=gha,scope=talos-initramfs
-              --cache-to=type=gha,mode=max,scope=talos-initramfs
-          run: make initramfs
+      - name: Build Talos initramfs
+        working-directory: ./talos
+        env:
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-initramfs
+            --cache-to=type=gha,mode=max,scope=talos-initramfs
+        run: make initramfs
 
-        - name: Build Talos imager
-          working-directory: ./talos
-          env:
-            CI_ARGS: >-
-              --cache-from=type=gha,scope=talos-imager
-              --cache-to=type=gha,mode=max,scope=talos-imager
-          run: make imager
+      - name: Build Talos imager
+        working-directory: ./talos
+        env:
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-imager
+            --cache-to=type=gha,mode=max,scope=talos-imager
+        run: make imager
 
-        - name: Build Talos installer-base
-          working-directory: ./talos
-          env:
-            CI_ARGS: >-
-              --cache-from=type=gha,scope=talos-installer-base
-              --cache-to=type=gha,mode=max,scope=talos-installer-base
-          run: make installer-base
+      - name: Build Talos installer-base
+        working-directory: ./talos
+        env:
+          CI_ARGS: >-
+            --cache-from=type=gha,scope=talos-installer-base
+            --cache-to=type=gha,mode=max,scope=talos-installer-base
+        run: make installer-base
 
       - name: Generate Images
         working-directory: ./talos
