@@ -25,11 +25,10 @@ jobs:
       PLATFORM: linux/amd64
       INSTALLER_ARCH: amd64
       PUSH: "true"
+      # Used by the imager-based targets (installer, iso, image-metal) below.
+      IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0@sha256:eff58d8ba793011df676dc6ec245ac21dad1db442d7427243beb33b7ae0984e6
 
     steps:
-      - name: Setup GitHub Cache
-        uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
-
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -79,25 +78,20 @@ jobs:
         run: >
           sed -i '/^\s*LLVM: 1/d' kernel/build/pkg.yaml
 
-      # Migration step 1: dual-write the build cache to GHCR (zstd) while still reading from GHA,
-      # so the registry cache gets populated without a rebuild. Step 2 will switch --cache-from
-      # to the registry refs and drop the GHA cache-to/scope lines.
       - name: Build Kernel
         working-directory: ./pkgs
         env:
           CI_ARGS: >-
-            --cache-from=type=gha,scope=pkgs
-            --cache-to=type=gha,mode=max,scope=pkgs
+            --cache-from=type=registry,ref=ghcr.io/wittenbude/talos/cache:kernel
             --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:kernel,mode=max,compression=zstd
         run: make kernel
 
-      # Each target below is a separate `docker buildx build`, so it gets its own cache scope.
+      # Each target below is a separate `docker buildx build`, so it gets its own cache ref.
       - name: Build Talos Kernel
         working-directory: ./talos
         env:
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-kernel
-            --cache-to=type=gha,mode=max,scope=talos-kernel
+            --cache-from=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-kernel
             --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-kernel,mode=max,compression=zstd
         run: make kernel
 
@@ -105,8 +99,7 @@ jobs:
         working-directory: ./talos
         env:
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-initramfs
-            --cache-to=type=gha,mode=max,scope=talos-initramfs
+            --cache-from=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-initramfs
             --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-initramfs,mode=max,compression=zstd
         run: make initramfs
 
@@ -114,8 +107,7 @@ jobs:
         working-directory: ./talos
         env:
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-imager
-            --cache-to=type=gha,mode=max,scope=talos-imager
+            --cache-from=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-imager
             --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-imager,mode=max,compression=zstd
         run: make imager
 
@@ -123,18 +115,22 @@ jobs:
         working-directory: ./talos
         env:
           CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-installer-base
-            --cache-to=type=gha,mode=max,scope=talos-installer-base
+            --cache-from=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-installer-base
             --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-installer-base,mode=max,compression=zstd
         run: make installer-base
 
-      - name: Generate Images
-        working-directory: ./talos
-        env:
-          IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0@sha256:eff58d8ba793011df676dc6ec245ac21dad1db442d7427243beb33b7ae0984e6
-        run: make installer iso image-metal
+      - parallel:
+          - name: Generate Installer Image
+            working-directory: ./talos
+            run: make installer
 
-      - run: ls -alh ./talos/_out/*
+          - name: Generate ISO Image
+            working-directory: ./talos
+            run: make iso
+
+          - name: Generate Metal Image
+            working-directory: ./talos
+            run: make image-metal
 
       - name: Upload ISO Image Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
