@@ -33,7 +33,7 @@ jobs:
           TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
         run: |
           echo "TAG=${TAG}" >> "$GITHUB_ENV"
-          echo "PKG_KERNEL=ghcr.io/$GITHUB_REPOSITORY_OWNER/kernel:${TAG}" >> "$GITHUB_ENV"
+          echo "PKG_KERNEL=ghcr.io/$GITHUB_REPOSITORY_OWNER/talos/kernel:${TAG}" >> "$GITHUB_ENV"
 
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,6 +59,7 @@ jobs:
           sed -i '/^\s*LLVM: 1/d' kernel/build/pkg.yaml
 
       - name: Build Kernel
+        if: ${{ false }}
         working-directory: ./pkgs
         env:
           CI_ARGS: >-
