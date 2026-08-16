@@ -79,12 +79,16 @@ jobs:
         run: >
           sed -i '/^\s*LLVM: 1/d' kernel/build/pkg.yaml
 
+      # Migration step 1: dual-write the build cache to GHCR (zstd) while still reading from GHA,
+      # so the registry cache gets populated without a rebuild. Step 2 will switch --cache-from
+      # to the registry refs and drop the GHA cache-to/scope lines.
       - name: Build Kernel
         working-directory: ./pkgs
         env:
           CI_ARGS: >-
             --cache-from=type=gha,scope=pkgs
             --cache-to=type=gha,mode=max,scope=pkgs
+            --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:kernel,mode=max,compression=zstd
         run: make kernel
 
       # Each target below is a separate `docker buildx build`, so it gets its own cache scope.
@@ -94,6 +98,7 @@ jobs:
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-kernel
             --cache-to=type=gha,mode=max,scope=talos-kernel
+            --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-kernel,mode=max,compression=zstd
         run: make kernel
 
       - name: Build Talos initramfs
@@ -102,6 +107,7 @@ jobs:
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-initramfs
             --cache-to=type=gha,mode=max,scope=talos-initramfs
+            --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-initramfs,mode=max,compression=zstd
         run: make initramfs
 
       - name: Build Talos imager
@@ -110,6 +116,7 @@ jobs:
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-imager
             --cache-to=type=gha,mode=max,scope=talos-imager
+            --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-imager,mode=max,compression=zstd
         run: make imager
 
       - name: Build Talos installer-base
@@ -118,6 +125,7 @@ jobs:
           CI_ARGS: >-
             --cache-from=type=gha,scope=talos-installer-base
             --cache-to=type=gha,mode=max,scope=talos-installer-base
+            --cache-to=type=registry,ref=ghcr.io/wittenbude/talos/cache:talos-installer-base,mode=max,compression=zstd
         run: make installer-base
 
       - name: Generate Images
@@ -128,11 +136,18 @@ jobs:
 
       - run: ls -alh ./talos/_out/*
 
-      - name: Upload build artifacts
+      - name: Upload ISO Image Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: talos-${{ steps.setup.outputs.tag }}
-          path: ./talos/_out/*
+          path: ./talos/_out/metal-amd64.iso
+          archive: false
+
+      - name: Upload Raw Image Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: talos-${{ steps.setup.outputs.tag }}
+          path: ./talos/_out/metal-amd64.raw.zst
           archive: false
 
       - name: Upload release assets
