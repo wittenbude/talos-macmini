@@ -33,6 +33,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           submodules: recursive
           fetch-depth: 0
 
@@ -57,6 +58,9 @@ jobs:
           echo "TAG=$VERSION" >> "$GITHUB_ENV"
           echo "PKG_KERNEL=ghcr.io/$GITHUB_REPOSITORY_OWNER/talos/kernel:$VERSION" >> "$GITHUB_ENV"
           echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup crane
+        uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
