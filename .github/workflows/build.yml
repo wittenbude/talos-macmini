@@ -27,15 +27,7 @@ jobs:
       PUSH: "true"
 
     steps:
-      - name: Setup
-        id: setup
-        env:
-          TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
-        run: |
-          echo "TAG=${TAG}" >> "$GITHUB_ENV"
-          echo "PKG_KERNEL=ghcr.io/$GITHUB_REPOSITORY_OWNER/talos/kernel:${TAG}" >> "$GITHUB_ENV"
-
-      - name: Setup GitHub Cace
+      - name: Setup GitHub Cache
         uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
 
       - name: Checkout Code
@@ -43,6 +35,28 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Setup
+        id: setup
+        env:
+          INPUT_TAG: ${{ inputs.tag || github.ref_name || '' }}
+        run: |
+          if [[ "${INPUT_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            # Use a provided semver tag as-is
+            VERSION="$INPUT_TAG"
+          else
+            # Use the talos version and append a pre-release identifier
+            TALOS_TAG="$(git -C talos describe --tags --abbrev=0 || true)"
+            if [ -z "$TALOS_TAG" ]; then
+              echo "::error::Failed to determine the Talos version tag from the talos submodule (git describe --tags --abbrev=0 failed)"
+              exit 1
+            fi
+            VERSION="${TALOS_TAG}-${INPUT_TAG}"
+          fi
+
+          echo "TAG=$VERSION" >> "$GITHUB_ENV"
+          echo "PKG_KERNEL=ghcr.io/$GITHUB_REPOSITORY_OWNER/talos/kernel:$VERSION" >> "$GITHUB_ENV"
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -63,7 +77,6 @@ jobs:
 
       - name: Build Kernel
         working-directory: ./pkgs
-        if: ${{ false }} # only for testing
         env:
           CI_ARGS: >-
             --cache-from=type=gha,scope=pkgs
