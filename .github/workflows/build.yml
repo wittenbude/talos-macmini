@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
     tags: ['*']
-  release:
-    types: [created]
   workflow_dispatch:
     inputs:
       tag:
@@ -147,7 +145,7 @@ jobs:
           archive: false
 
       - name: Upload release assets
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          files: ./talos/_out/*
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" $(find ./talos/_out -maxdepth 1 -type f) --repo "$GITHUB_REPOSITORY" --clobber
