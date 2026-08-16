@@ -126,11 +126,14 @@ jobs:
           IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0@sha256:eff58d8ba793011df676dc6ec245ac21dad1db442d7427243beb33b7ae0984e6
         run: make installer iso image-metal
 
+      - run: ls -alh ./talos/_out/*
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: talos-${{ steps.setup.outputs.tag }}
           path: ./talos/_out/*
+          archive: false
 
       - name: Upload release assets
         if: github.event_name == 'release'
