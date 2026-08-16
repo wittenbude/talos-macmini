@@ -59,8 +59,8 @@ jobs:
           sed -i '/^\s*LLVM: 1/d' kernel/build/pkg.yaml
 
       - name: Build Kernel
-        if: ${{ false }}
         working-directory: ./pkgs
+        if: ${{ false }} # only for testing
         env:
           CI_ARGS: >-
             --cache-from=type=gha,scope=pkgs
@@ -68,42 +68,43 @@ jobs:
         run: make kernel
 
       # Each target below is a separate `docker buildx build`, so it gets its own cache scope.
-      - name: Build Talos Kernel
-        working-directory: ./talos
-        env:
-          CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-kernel
-            --cache-to=type=gha,mode=max,scope=talos-kernel
-        run: make kernel
+      - parallel:
+        - name: Build Talos Kernel
+          working-directory: ./talos
+          env:
+            CI_ARGS: >-
+              --cache-from=type=gha,scope=talos-kernel
+              --cache-to=type=gha,mode=max,scope=talos-kernel
+          run: make kernel
 
-      - name: Build Talos initramfs
-        working-directory: ./talos
-        env:
-          CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-initramfs
-            --cache-to=type=gha,mode=max,scope=talos-initramfs
-        run: make initramfs
+        - name: Build Talos initramfs
+          working-directory: ./talos
+          env:
+            CI_ARGS: >-
+              --cache-from=type=gha,scope=talos-initramfs
+              --cache-to=type=gha,mode=max,scope=talos-initramfs
+          run: make initramfs
 
-      - name: Build Talos imager
-        working-directory: ./talos
-        env:
-          CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-imager
-            --cache-to=type=gha,mode=max,scope=talos-imager
-        run: make imager
+        - name: Build Talos imager
+          working-directory: ./talos
+          env:
+            CI_ARGS: >-
+              --cache-from=type=gha,scope=talos-imager
+              --cache-to=type=gha,mode=max,scope=talos-imager
+          run: make imager
 
-      - name: Build Talos installer-base
-        working-directory: ./talos
-        env:
-          CI_ARGS: >-
-            --cache-from=type=gha,scope=talos-installer-base
-            --cache-to=type=gha,mode=max,scope=talos-installer-base
-        run: make installer-base
+        - name: Build Talos installer-base
+          working-directory: ./talos
+          env:
+            CI_ARGS: >-
+              --cache-from=type=gha,scope=talos-installer-base
+              --cache-to=type=gha,mode=max,scope=talos-installer-base
+          run: make installer-base
 
       - name: Generate Images
         working-directory: ./talos
         env:
-          IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0
+          IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0@sha256:eff58d8ba793011df676dc6ec245ac21dad1db442d7427243beb33b7ae0984e6
         run: make installer iso image-metal
 
       - name: Upload build artifacts
