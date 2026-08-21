@@ -5,6 +5,18 @@
     "enabled": true
   },
   "groupSingleUpdates": false,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update system extension images pinned in the build workflow",
+      "managerFilePatterns": ["/^\\.github/workflows/build\\.ya?ml$/"],
+      "matchStrings": [
+        "--system-extension-image=(?<depName>[^:@\\s]+):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
   "packageRules": [
     {
       "matchDepNames": ["pkgs"],
