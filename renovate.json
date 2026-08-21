@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "dependencyDashboard": true,
-  "separateMinorPatch": true,
+  "prHourlyLimit": 10,
   "git-submodules": {
     "enabled": true
   },
@@ -20,6 +20,10 @@
   ],
   "packageRules": [
     {
+      "matchDepNames": ["talos", "pkgs"],
+      "separateMinorPatch": true
+    },
+    {
       "matchDepNames": ["pkgs"],
       "versioning": "regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)$"
     },
@@ -27,19 +31,22 @@
       "matchDepNames": ["talos", "pkgs"],
       "matchUpdateTypes": ["major", "minor"],
       "groupName": "Talos & Packages",
-      "groupSlug": "talos-pkgs-release"
+      "groupSlug": "talos-release",
+      "commitMessageExtra": "to {{{newVersion}}}"
     },
     {
       "matchDepNames": ["talos"],
       "matchUpdateTypes": ["patch"],
-      "groupName": "Talos & Packages (patch)",
-      "groupSlug": "talos-pkgs-patch"
+      "groupName": "Talos & Packages",
+      "groupSlug": "talos-patch",
+      "commitMessageExtra": "to {{{newVersion}}}"
     },
     {
       "matchDepNames": ["pkgs"],
       "matchUpdateTypes": ["digest"],
-      "groupName": "Talos & Packages (patch)",
-      "groupSlug": "talos-pkgs-patch"
+      "groupName": "Talos & Packages",
+      "groupSlug": "talos-patch",
+      "commitMessageExtra": "to {{{newValue}}}"
     }
   ]
 }
