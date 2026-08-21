@@ -31,22 +31,7 @@
       "matchDepNames": ["talos", "pkgs"],
       "matchUpdateTypes": ["major", "minor"],
       "groupName": "Talos & Packages",
-      "groupSlug": "talos-release",
       "commitMessageExtra": "to {{{newVersion}}}"
-    },
-    {
-      "matchDepNames": ["talos"],
-      "matchUpdateTypes": ["patch"],
-      "groupName": "Talos & Packages",
-      "groupSlug": "talos-patch",
-      "commitMessageExtra": "to {{{newVersion}}}"
-    },
-    {
-      "matchDepNames": ["pkgs"],
-      "matchUpdateTypes": ["digest"],
-      "groupName": "Talos & Packages",
-      "groupSlug": "talos-patch",
-      "commitMessageExtra": "to {{{newValue}}}"
     }
   ]
 }
