@@ -24,7 +24,7 @@ jobs:
       INSTALLER_ARCH: amd64
       PUSH: "true"
       # Used by the imager-based targets (installer, iso, image-metal) below.
-      IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0@sha256:97794a8b6064e24d8053b6d424662ccd844052ee57e1b3efc795889ec21bcb0b
+      IMAGER_ARGS: --platform=metal --extra-kernel-arg=talos.platform=metal --system-extension-image=ghcr.io/siderolabs/iscsi-tools:v0.2.0@sha256:8b0c13a73a0a82cbd7c458c170241c4bb08de3ec536d97fbde6bced24668d11e
 
     steps:
       - name: Checkout Code
